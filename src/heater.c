@@ -1,9 +1,4 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <unistd.h>
 #include <pthread.h>
-#include "MQTTClient.h"
-#include "utility.h"
 #include "heater.h"
 
 int heater_temperature = 0;

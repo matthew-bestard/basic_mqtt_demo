@@ -1,55 +1,35 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
 #include <signal.h>
-#include <pthread.h>
 #include <MQTTClient.h>
-#include <unistd.h>
 #include "utility.h"
-#include <heater.h> // Include heater header
+#include "heater.h"
 
+// later setup getopts to pass these with flags from terminal
 #define ADDRESS       "tcp://broker.emqx.io:1883"
 #define CLIENTID      "mb-test-client-1"
-#define TOPIC         "test/mb-test"
-#define CONTROL_TOPIC "mb-test/control/temperature" // New control topic
+#define TOPIC         "mb-test/control/temperature"
 #define QOS           1
 #define TIMEOUT       10000L
 
-volatile int finished = 0;
-
 int messageArrived(void *context, char *topicName, int topicLen, MQTTClient_message *message)
 {
-  printf("--------------------------------------------------------------------------------\n");
-  printf("Message arrived on topic: %s\n", topicName);
-  printf("Message content: %.*s", message->payloadlen, (char*)message->payload);
-  printf("--------------------------------------------------------------------------------\n");
+  printf("Control message arrived, setting temperature to: %.*s", message->payloadlen, (char*)message->payload);
 
-  if(strcmp(topicName, CONTROL_TOPIC) == 0) {
-    // Parse the incoming message paylaod as a integer (representng temperature)
-    int parsed_temperature = atoi((char*)message->payload);
+  // Unsafe, in the future will use strtol and validate integer
+  int parsed_temperature = atoi((char*)message->payload);
 
-    set_temperature(parsed_temperature);
-
-    printf("Heater temperature set to: %d\n", get_temperature());
-  }
+  set_temperature(parsed_temperature);
+  printf("Heater succesfully temperature set to: %d\n", get_temperature());
 
   MQTTClient_freeMessage(&message);
   MQTTClient_free(topicName);
+
   return 1;
-}
-
-void sigint_handler(int sig) {
-    finished = 1;
-}
-
-void print_status() {
-  printf("Current Heater Temperature: %d\n", get_temperature());
 }
 
 int main(int argc, char* argv[])
 {
-  signal(SIGINT, sigint_handler);
-
   int rc;
 
   MQTTClient client;
@@ -72,16 +52,15 @@ int main(int argc, char* argv[])
   rc = MQTTClient_subscribe(client, TOPIC, QOS);
   handle_mqtt_error(rc, "Failed to Subscribe.");
 
-  printf("Subscribed on control topic: %s\n", CONTROL_TOPIC);
-  rc = MQTTClient_subscribe(client, CONTROL_TOPIC, QOS);
-  handle_mqtt_error(rc, "Failed to Subscribe to Control Topic.");
-
   initialize_heater();
 
-  while (!finished) {
-    print_status();
-    usleep(1000000); // Sleep for 1 second
-  }
+  // Wait for Ctrl+C (SIGINT) to exit
+  printf("Press Ctrl+C to exit...\n");
+  int sig;
+  sigset_t set;
+  sigemptyset(&set);
+  sigaddset(&set, SIGINT);
+  sigwait(&set, &sig);
 
   MQTTClient_disconnect(client, 10000);
   MQTTClient_destroy(&client);
