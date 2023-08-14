@@ -6,4 +6,4 @@ set(CMAKE_C_STANDARD 11)
 include_directories(include)
 link_libraries(paho-mqtt3c)
 
-add_executable(basic_mqtt_demo src/main.c src/utility.c)
+add_executable(basic_mqtt_demo src/main.c src/heater.c src/utility.c)
