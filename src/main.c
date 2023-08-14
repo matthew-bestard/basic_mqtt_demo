@@ -42,6 +42,10 @@ void sigint_handler(int sig) {
     finished = 1;
 }
 
+void print_status() {
+  printf("Current Heater Temperature: %d\n", get_temperature());
+}
+
 int main(int argc, char* argv[])
 {
   signal(SIGINT, sigint_handler);
@@ -75,6 +79,7 @@ int main(int argc, char* argv[])
   initialize_heater();
 
   while (!finished) {
+    print_status();
     usleep(1000000); // Sleep for 1 second
   }
 
